@@ -1,0 +1,5 @@
+[connection]
+user = "Krouton"
+host = "example.com"
+port = 22
+key_path = "/Users/krouton/.ssh/id_rsa"
