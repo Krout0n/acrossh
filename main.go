@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"gopkg.in/ini.v1"
 )
@@ -24,6 +25,26 @@ func ce(err error, msg string) {
 	}
 }
 
+type FirewallClient struct{}
+
+func NewFirewallClient() *FirewallClient {
+	if os.Getuid() == 0 {
+		fmt.Fprint(os.Stdout, "OK")
+	} else {
+		_, filename, _, _ := runtime.Caller(1)
+		out, err := exec.Command("sudo", "-p", "Password:[local sudo] ", "go", "run", filename).Output()
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		println(string(out))
+	}
+	return nil
+}
+
+func run(conf ConnectionConfig) {
+	NewFirewallClient()
+}
+
 func main() {
 	cfg, err := ini.Load("acrossh.conf")
 	ce(err, "config")
@@ -34,16 +55,5 @@ func main() {
 		port:    cfg.Section("connection").Key("port").MustInt(22),
 		keyPath: cfg.Section("connection").Key("key_path").MustString("~/.ssh/id_rsa"),
 	}
-	// example.com is expected.
-	println(conf.host)
-
-	if os.Getuid() == 0 {
-		fmt.Fprint(os.Stdout, "OK")
-	} else {
-		out, err := exec.Command("sudo", "-p", "Password:[local sudo] ", "go", "run", "main.go").Output()
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-		println(string(out))
-	}
+	run(conf)
 }
