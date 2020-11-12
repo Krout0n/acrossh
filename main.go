@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"os/exec"
-	"runtime"
 
 	"gopkg.in/ini.v1"
 )
@@ -25,20 +22,41 @@ func ce(err error, msg string) {
 	}
 }
 
-type FirewallClient struct{}
+type FirewallClient struct {
+	argv         []string
+	childProcess *exec.Cmd
+	// TODO: Define appropriate type instead of interface{}
+	autoNets []interface{}
+}
 
 func NewFirewallClient() *FirewallClient {
-	if os.Getuid() == 0 {
-		fmt.Fprint(os.Stdout, "OK")
-	} else {
-		_, filename, _, _ := runtime.Caller(1)
-		out, err := exec.Command("sudo", "-p", "Password:[local sudo] ", "go", "run", filename).Output()
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-		println(string(out))
+	fc := FirewallClient{}
+	ex, err := os.Executable()
+	if err != nil {
+		ce(err, "executable path")
 	}
-	return nil
+
+	elevPrefix := []string{"sudo", "-p", "[local sudo] Password: ", ex}
+	path := which(elevPrefix[0])
+	if path != "" {
+		elevPrefix[0] = path
+	}
+
+	argvTries := make([][]string, 0)
+	argvTries = append(argvTries, elevPrefix)
+	if os.Getuid() == 0 {
+		fc.argv = argvTries[len(argvTries)-1]
+	}
+	for _, argv := range argvTries {
+		println(argv)
+	}
+	fc.argv = argvTries[len(argvTries)-1]
+	return &fc
+}
+
+func which(cmd string) string {
+	// TODO: implement, quit hard coding for *nix.
+	return "/usr/bin/" + cmd
 }
 
 func run(conf ConnectionConfig) {
